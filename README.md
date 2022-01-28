@@ -27,5 +27,27 @@ val df = spark.sparkContext.parallelize(mockedData).toDF("accountNbr", "manufact
 
 ### Spark-Scala : DataFrame : Option # 3
 ```
+import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.types.{
+  IntegerType,
+  LongType,
+  StringType,
+  StructField,
+  StructType
+}
+
+val testDataList = List(
+  Row(1001, "a1"),
+  Row(1002, "a2")
+)
+
+val testDataSchema = StructType(
+  List(
+    StructField("dept_id", IntegerType, false),
+    StructField("dept_name", StringType, false)
+  )
+)
+
+val df = spark.createDataFrame(spark.sparkContext.parallelize(testDataList),testDataSchema)
 ```
 
