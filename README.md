@@ -89,4 +89,50 @@ def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
 }
 ```
 
+### Spark-Scala : DataFrame : Write to Table # Option # 2
+```
+import io.delta.tables.DeltaTable
+import org.apache.spark.sql.functions.{col, current_timestamp}
+import org.apache.spark.sql.{DataFrame, SparkSession}
+
+
+//
+val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+
+// todo - build dataframe from above examples
+val dataFrame = spark.emptyDataFrame
+
+//
+insert2Account(spark, dataFrame)
+
+
+def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
+    //
+    val accountDataFrame = df
+      .withColumn("created_date", current_timestamp())
+      .withColumn("updated_date", current_timestamp())
+
+    //
+    val upsertCondition = "target.account_id = source.account_id"
+
+    //
+    val tableName: String = "account"
+    val deltaTable = DeltaTable.forName(spark, tableName)
+    deltaTable
+      .as("target")
+      .merge(accountDataFrame.alias("source"), upsertCondition)
+      .whenMatched
+      .updateExpr(
+        Map(
+          "updated_date" -> "source.exp_ev_tmstmp",
+          "first_name" -> "source.first_name",
+          "last_name" -> "source.last_name"
+        )
+      )
+      .whenNotMatched
+      .insertAll()
+      .execute()
+  }
+
+```
 
