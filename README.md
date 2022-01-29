@@ -76,16 +76,16 @@ def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
       "last_name",
       "sys_creation_date"
     )
-  val subscriberDataFrame = df.select(listCols.map(m => col(m)): _*)
+  val accountDataFrame = df.select(listCols.map(m => col(m)): _*)
 
   //
   val tableName: String = "account"
   
   //
-  subscriberDataFrame.write
-    .format("delta")
-    .mode("overwrite")
-    .saveAsTable(tableName)
+  accountDataFrame.write
+                  .format("delta")
+                  .mode("overwrite")
+                  .saveAsTable(tableName)
 }
 ```
 
