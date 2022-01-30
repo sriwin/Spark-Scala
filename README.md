@@ -136,3 +136,18 @@ def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
 
 ```
 
+### Spark-Scala : DataFrame : get single data to list
+
+```
+ //
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
+
+// todo - build dataframe from above examples
+val dataFrame = spark.emptyDataFrame
+
+val empIdList = dataFrame.select("emp_id").distinct.collect.flatMap(_.toSeq)
+```
