@@ -343,9 +343,9 @@ val data = List(
     val qryDataFrame = spark.sql(qry)
     val sqlQryDataList = qryDataFrame.collect()
     sqlQryDataList.foreach { rowData =>
-      val sysCreationDate: String = rowData.getAs[String]("sys_creation_date")
+      val sysCreationDate: String = rowData.getAs[String]("creation_date")
       val name: String = rowData.getAs[String]("name")
-      val empId: Long = rowData.getAs[Long]("emp_id")
+      val empId: Int = rowData.getAs[Int]("emp_id")
 
       println(
         s"empId => $empId, name => $name, sysCreationDate => $sysCreationDate"
