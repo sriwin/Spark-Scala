@@ -374,6 +374,10 @@ val data = List(
 ### Spark-Scala - DataFrame - Cast Column to another Type
 
 ```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 def castColumnTo(dataFrame: DataFrame, colName: String, castType: DataType ) : DataFrame = {
     dataFrame.withColumn(colName, dataFrame(colName).cast(castType) )
 }
@@ -381,21 +385,67 @@ def castColumnTo(dataFrame: DataFrame, colName: String, castType: DataType ) : D
 
 ### Spark-Scala - Cast List[Any] to List[Long]
 ```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 val empIdList = df.select("emp_id").collect().map(_(0)).toList.map(_.toString.toLong)
 ```
 
 ### Spark-Scala - DataFrame : Cast Int to Long
 ```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 val df1 = df.withColumn("emp_id", col("emp_id").cast(LongType))
 ```
 
 ### Spark-Scala - Filter DataFrame using List
 ```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 val qryDataFrame = spark.sql(qry).filter(col("emp_id").isin(empList: _*))
 ```
 
 ### Spark-Scala - Filter DataFrame using user variable
 ```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
 val sqlQryDataFrame = spark.sql(sqlQry)
 sqlQryDataFrame.filter(sqlQryDataFrame("execution_nbr") === executionNbr)
 ```
+
+### Spark-Scala - Read CSV from Databricks FileStore Location
+```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
+
+val testDataFileLocation = "/FileStore/tables/test1.csv"
+val fileType = "csv"
+
+//# CSV options
+val inferSchema = "true"
+val isFirstRowHeader = "true"
+val delimiter = ","
+
+//
+val deltaLakeTableName: String = "qa_test_data"
+
+//
+val df = spark.read
+              .format(fileType)
+              .option("inferSchema", inferSchema)
+              .option("header", isFirstRowHeader)
+              .option("sep", delimiter)
+              .load(testDataFileLocation)
+//
+testDataDataFrame.write.format("delta").mode(SaveMode.Overwrite).saveAsTable(deltaLakeTableName)
+```
+
+
