@@ -370,3 +370,11 @@ val data = List(
   }
 
 ```
+
+### Spark-Scala - DataFrame - Cast Column to another Type
+
+```
+def castColumnTo(dataFrame: DataFrame, colName: String, castType: DataType ) : DataFrame = {
+    dataFrame.withColumn(colName, dataFrame(colName).cast(castType) )
+}
+```
