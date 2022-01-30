@@ -378,3 +378,8 @@ def castColumnTo(dataFrame: DataFrame, colName: String, castType: DataType ) : D
     dataFrame.withColumn(colName, dataFrame(colName).cast(castType) )
 }
 ```
+
+### Spark-Scala - Cast List[Any] to List[Long]
+```
+val empIdList = df.select("emp_id").collect().map(_(0)).toList.map(_.toString.toLong)
+```
