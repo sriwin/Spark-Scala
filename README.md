@@ -269,3 +269,104 @@ object DBUtil {
     }
   }
 ```
+
+### Spark-Scala : Split DataFrame based on empId
+
+```
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+
+val spark = SparkSession.builder()
+                        .appName("SparkScalaApp")
+                        .master("local[*]")
+                        .getOrCreate()
+
+val data = List(
+      (101, "2022-01-16", "a1"),
+      (101, "2022-01-17", "b1"),
+      (101, "2022-01-18", "c1"),
+      (101, "2022-01-19", "a1"),
+      (101, "2022-01-20", "b1"),
+      //
+      (102, "2022-01-25", "a1"),
+      (102, "2022-01-26", "b1"),
+      //
+      (103, "2022-01-11", "a1"),
+      (103, "2022-01-12", "a1"),
+      (103, "2022-01-13", "a1"),
+      (103, "2022-01-14", "b1"),
+      (103, "2022-01-15", "a1"),
+      (103, "2022-01-16", "a1"),
+      (103, "2022-01-26", "b1")
+    )
+
+    import spark.implicits._
+    val df = spark.sparkContext
+      .parallelize(data)
+      .toDF(
+        "emp_id",
+        "creation_date",
+        "name"
+      );
+
+    val empIdList = df.select("emp_id").distinct.collect.flatMap(_.toSeq)
+    empIdList.foreach(println)
+
+    val dataFrameList =
+      empIdList.map(empData => df.where($"emp_id" <=> empData))
+
+    val columnNames = Seq(
+      "emp_id",
+      "creation_date",
+      "name"
+    )
+
+    dataFrameList.foreach(dataFrame => {
+      val smDataFrame = getTopRecordsDataFrame(
+        dataFrame,
+        columnNames,
+        filterColName = "name",
+        filterColValue = "b1",
+        orderedByColName = "creation_date",
+        limitNbr = 3
+      )
+
+      printRecordData(spark, smDataFrame)
+    })
+  }
+
+  def printRecordData(spark: SparkSession, df: DataFrame): Unit = {
+    //
+    df.createOrReplaceTempView("temp_data_view")
+    //
+    val qry = "select * from temp_data_view";
+    val qryDataFrame = spark.sql(qry)
+    val sqlQryDataList = qryDataFrame.collect()
+    sqlQryDataList.foreach { rowData =>
+      val sysCreationDate: String = rowData.getAs[String]("sys_creation_date")
+      val name: String = rowData.getAs[String]("name")
+      val empId: Long = rowData.getAs[Long]("emp_id")
+
+      println(
+        s"empId => $empId, name => $name, sysCreationDate => $sysCreationDate"
+      )
+    }
+  }
+
+  def getTopRecordsDataFrame(
+      df: Dataset[Row],
+      dataFrameAllColNames: Seq[String],
+      filterColName: String,
+      filterColValue: String,
+      orderedByColName: String,
+      limitNbr: Int
+  ): Dataset[Row] = {
+    val filteredDataFrame = df
+      .select(dataFrameAllColNames.map(name => col(name)): _*)
+      .filter(df(filterColName) === filterColValue)
+      .orderBy(col(orderedByColName).desc)
+      .limit(limitNbr)
+    filteredDataFrame
+  }
+
+```
