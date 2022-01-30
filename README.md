@@ -386,5 +386,11 @@ val empIdList = df.select("emp_id").collect().map(_(0)).toList.map(_.toString.to
 
 ### Spark-Scala - Filter DataFrame using List
 ```
-val qryDataFrame = spark.sql(qry).filter(col("emp_id").isin(banList: _*))
+val qryDataFrame = spark.sql(qry).filter(col("emp_id").isin(empList: _*))
+```
+
+### Spark-Scala - Filter DataFrame using user variable
+```
+val sqlQryDataFrame = spark.sql(sqlQry)
+sqlQryDataFrame.filter(sqlQryDataFrame("execution_nbr") === executionNbr)
 ```
