@@ -136,7 +136,7 @@ def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
 
 ```
 
-### Spark-Scala : DataFrame : get single data to list : Option # 1 
+### Spark-Scala : DataFrame : extract single column data to list : Option # 1 
 
 ```
  //
@@ -152,7 +152,7 @@ val dataFrame = spark.emptyDataFrame
 val empIdList = dataFrame.select("emp_id").distinct.collect.flatMap(_.toSeq)
 ```
 
-### Spark-Scala : DataFrame : get single data to list : Option # 1 
+### Spark-Scala : DataFrame : extract single column data to list : Option # 2
 
 ```
 //
