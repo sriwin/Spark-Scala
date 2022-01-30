@@ -167,3 +167,105 @@ val dataFrame = spark.emptyDataFrame
 
 val empIdList = dataFrame.select("id").collect().map(_(0)).toList
 ```
+
+### Spark-Scala : Oracle CRUD : extract single column data to list
+```
+object DBUtil {
+    /**
+     * this code is not tested properly
+     * 1. verify the db col names & dataframe are same.
+     * 2. override - will remove all records from db and will insert
+     * 3. append  - not tested
+     */
+    
+    def insertRecords(df: DataFrame, tableName: String): Unit = {
+      val jdbcPort = 1234;
+      val jdbcUsername = "abcd"
+      val jdbcHost = "127.0.01";
+      val jdbcPassword = "abcxyz"
+      val jdbcSidSchema = "sid-schema"
+      val driverDriver = "oracle.jdbc.OracleDriver"
+      val jdbcUrl = s"jdbc:oracle:thin:@$jdbcHost:$jdbcPort:$jdbcSidSchema"
+      println(s"jdbcUrl => $jdbcUrl")
+
+      df.write
+        .format("jdbc")
+        .options(
+          Map(
+            "url" -> jdbcUrl,
+            "user" -> jdbcUsername,
+            "password" -> jdbcPassword,
+            "dbtable" -> tableName,
+            "driver" -> driverDriver
+          )
+        )
+        .mode(SaveMode.Overwrite)
+        .save()
+    }
+
+    def selectRecords(spark: SparkSession): Unit = {
+      val selectQry =
+        "(select count(1) as total_count from emp) tab"
+      println(s"Qry => $selectQry")
+
+      val jdbcPort = 1234;
+      val jdbcUsername = "abcd"
+      val jdbcHost = "127.0.01";
+      val jdbcPassword = "abcxyz"
+      val jdbcSidSchema = "sid-schema"
+      val driverDriver = "oracle.jdbc.OracleDriver"
+      val jdbcUrl = s"jdbc:oracle:thin:@$jdbcHost:$jdbcPort:$jdbcSidSchema"
+      println(s"jdbcUrl => $jdbcUrl")
+
+      val jdbcDataFrame = spark.read
+        .format("jdbc")
+        .options(
+          Map(
+            "url" -> jdbcUrl,
+            "user" -> jdbcUsername,
+            "password" -> jdbcPassword,
+            "dbtable" -> selectQry,
+            "driver" -> driverDriver
+          )
+        )
+        .load()
+
+      if (jdbcDataFrame.count() != 0) {
+        val totalCount = jdbcDataFrame.select("total_count")
+        println(s"totalCount = $totalCount")
+      }
+    }
+
+    def deleteRecords(): Unit = {
+      val jdbcPort = 1234;
+      val jdbcUsername = "abcd"
+      val jdbcHost = "127.0.01";
+      val jdbcPassword = "abcxyz"
+      val jdbcSidSchema = "sid-schema"
+      val driverDriver = "oracle.jdbc.OracleDriver"
+      val jdbcUrl = s"jdbc:oracle:thin:@$jdbcHost:$jdbcPort:$jdbcSidSchema"
+      println(s"jdbcUrl => $jdbcUrl")
+
+      var connection: Connection = null
+      var deletedRowsCount: Int = 0
+      try {
+        Class.forName(driverDriver);
+        connection =
+          DriverManager.getConnection(jdbcUrl, jdbcUsername, jdbcPassword);
+
+        val deleteQry = "DELETE FROM xyz"
+        val prepareStatement: PreparedStatement =
+          connection.prepareStatement(deleteQry)
+        try {
+          deletedRowsCount = prepareStatement.executeUpdate();
+        } finally {
+          prepareStatement.close();
+        }
+      } catch {
+        case e: SQLException => e.printStackTrace();
+      } finally {
+        connection.close();
+      }
+    }
+  }
+```
