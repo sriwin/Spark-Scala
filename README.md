@@ -448,4 +448,57 @@ val df = spark.read
 testDataDataFrame.write.format("delta").mode(SaveMode.Overwrite).saveAsTable(deltaLakeTableName)
 ```
 
+### Spark-Scala : Convert Timestamp Column to String
+```
+import org.apache.spark.sql.functions.{col, date_format, to_timestamp}
+import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+
+//
+val spark = SparkSession.builder()
+                        .appName("SparkScalaApp")
+                        .master("local[*]")
+                        .getOrCreate()
+
+import spark.implicits._
+val timestamp2StringDataFrame = Seq(
+  (Timestamp.valueOf("2022-01-29 06:00:01"))
+).toDF("created_timestamp")
+
+val stringDataFrame = castTimestamp2String(timestamp2StringDataFrame,
+"created_timestamp", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd")
+println("########################################")
+println("#### Timestamp 2 String - DataFrame ")
+println("########################################")
+stringDataFrame.show(false)
+
+def castTimestamp2String(dataFrame: DataFrame, colName: String, inputFormat: String, outputFormat: String): DataFrame = {
+    dataFrame.withColumn(colName,date_format(to_timestamp(col(colName), inputFormat), outputFormat))
+}
+```
+
+### Spark-Scala : Convert String Column to Timestamp
+```
+import org.apache.spark.sql.functions.{col, date_format, to_timestamp}
+import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+
+//
+val spark = SparkSession.builder()
+                        .appName("SparkScalaApp")
+                        .master("local[*]")
+                        .getOrCreate()
+                        
+val string2TimestampDataFrame = Seq(
+      ("2022-01-29 06:00:01")
+    ).toDF("created_timestamp")
+
+val timestampDataFrame = CastUtil.castString2Timestamp(string2TimestampDataFrame, "created_timestamp", 
+"yyyy-MM-dd HH:mm:ss")
+
+println("########################################")
+println("#### String 2 Timestamp - DataFrame ")
+println("########################################")
+timestampDataFrame.show(false)
+```
 
