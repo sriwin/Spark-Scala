@@ -502,3 +502,12 @@ println("########################################")
 timestampDataFrame.show(false)
 ```
 
+### Spark-Scala - remove temp view tables
+```
+spark.catalog.dropTempView("tab_data_view")
+```
+
+### Databricks - remove file from dbfs location
+```
+dbutils.fs.rm("/FileStore/tables/sample_data.csv")
+```
