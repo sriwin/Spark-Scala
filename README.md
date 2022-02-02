@@ -707,12 +707,22 @@ import org.apache.spark.sql.SparkSession
 
 //
 val spark = SparkSession.builder()
-						.appName("SparkScalaApp")
-						.master("local[*]")
-						.getOrCreate()
+			.appName("SparkScalaApp")
+			.master("local[*]")
+			.getOrCreate()
 val tableName = "emp"
 val empIdList = List(101, 102)
-val deleteQry = s"select * from $tableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
+val deleteQry = s"delete from $tableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
 spark.sql(deleteQry)
 ```
 
+### Spark-Scala : Select records Using List
+```
+import org.apache.spark.sql.SparkSession
+val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val resultsTableName = "emp"
+val empIdList = List(101, 102)
+val selectQry = s"select * from $resultsTableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
+val selectQryDataFrame = spark.sql(selectQry)
+selectQryDataFrame.show(false)
+```
