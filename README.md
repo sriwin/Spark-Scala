@@ -27,6 +27,25 @@ val df = spark.sparkContext.parallelize(mockedData).toDF("accountNbr", "manufact
 
 ### Spark-Scala : DataFrame : Option # 3
 ```
+import org.apache.spark.sql.{SparkSession}
+//
+val spark = SparkSession.builder()
+                                             .appName("SparkScalaApp")
+                                             .master("local[*]")
+                                             .getOrCreate()
+
+val data = List(
+      ("f1", "l1", "M", 10000),
+      ("f2", "l2", "F", 20000),
+      ("f3", "l3", "M", 30000)
+)
+
+val cols =Seq("first_name", "last_name", "gender", "salary")
+val df = spark.createDataFrame(data).toDF(cols: _*)
+```
+
+### Spark-Scala : DataFrame : Option # 4
+```
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types.{
   IntegerType,
@@ -50,6 +69,8 @@ val testDataSchema = StructType(
 
 val df = spark.createDataFrame(spark.sparkContext.parallelize(testDataList),testDataSchema)
 ```
+
+
 
 ### Spark-Scala : DataFrame : Write to Table # Option # 1
 ```
@@ -502,6 +523,173 @@ println("########################################")
 timestampDataFrame.show(false)
 ```
 
+### Spark-Scala : DataFrame : Add New Column using withColumn
+```
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.lit
+
+//
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
+
+val data = List(
+  ("f1", "l1", "M", 10000),
+  ("f2", "l2", "F", 20000),
+  ("f3", "l3", "M", 30000)
+)
+
+val cols =
+  Seq("first_name", "last_name", "gender", "salary")
+val df = spark.createDataFrame(data).toDF(cols: _*)
+
+var df1 = df
+      .withColumn("phone", lit("null").as("StringType"))
+      .withColumn("po_order", lit(0.0).as("DoubleType"))
+      .withColumn("created_date", current_timestamp())
+      .withColumn("updated_date", current_timestamp())
+    df1.show(false)
+
+df1.show(false)
+```
+
+
+### Spark-Scala : DataFrame : Add New Column using withColumn and when Condition
+
+```
+Syntax - 
+df.withColumn("new_column_name",  when(<column_condition>, <value_when_true>).otherwise(<value_when_false>))
+
+Example
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, current_timestamp, lit, when}
+
+
+//
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
+
+val data = List(
+  ("f1", "l1", "M", 10000, "galaxy4", 25),
+  ("f2", "l2", "F", 20000, "galaxy6", 35),
+  ("f3", "l3", "M", 30000, "galaxy10", 45),
+  ("f4", "l4", "N", 40000, "galaxy20", 55)
+)
+
+val cols =
+  Seq("first_name", "last_name", "gender", "salary", "phone_model", "age")
+val df = spark.createDataFrame(data).toDF(cols: _*)
+
+var df1 = df
+  .withColumn("phone", lit("null").as("StringType"))
+  .withColumn("po_order", lit(0.0).as("DoubleType"))
+  .withColumn("created_date", current_timestamp())
+  .withColumn("updated_date", current_timestamp())
+  .withColumn(
+	"sal_gt_1000",
+	when(col("salary") > 1000, true).otherwise(false)
+  )
+  .withColumn(
+	"new_gender",
+	when(col("gender").equalTo("N"), "NA")
+  )
+  .withColumn(
+	"phone_make_year",
+	when(col("phone_model") === "galaxy4", 2008)
+	  .when(col("phone_model").isin("galaxy6", "galaxy10"), 2010)
+	  .when(col("phone_model").isin("galaxy20"), 2020)
+	  .otherwise(2005)
+  )
+df1.show(false)
+```
+
+### Spark-Scala : DataFrame : Add New Column using withColumn and when Condition
+```
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.row_number
+
+//
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
+
+import spark.implicits._
+val df = Seq(
+  (Date.valueOf("2019-01-01"), "n", 200.00),
+  (Date.valueOf("2019-05-10"), "n", 400.00),
+  (Date.valueOf("2019-03-05"), "s", 100.00),
+  (Date.valueOf("2019-02-20"), "c", 500.00),
+  (Date.valueOf("2019-01-20"), "s", 300.00),
+  (Date.valueOf("2019-02-15"), "l", 700.00),
+  (Date.valueOf("2019-07-01"), "c", 700.00),
+  (Date.valueOf("2019-04-01"), "s", 400.00)
+).toDF("create_date", "category", "price")
+
+val df1 = df
+  .withColumn(
+	"row_nbr",
+	row_number() over Window.partitionBy("category").orderBy("create_date")
+  )
+
+df1.show(false)
+```
+
+### Spark-Scala - DataFrame :  when Condition & filter conditions
+```
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, when}
+
+//
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
+
+import spark.sqlContext.implicits._
+val data = List(
+  ("f1", "l1", "M", 25),
+  ("f2", "l2", "F", 35),
+  ("f3", "l3", "M", 45),
+  ("f4", "l4", "N", 55)
+)
+
+val cols =
+  Seq("first_name", "last_name", "gender", "age")
+val df = spark.createDataFrame(data).toDF(cols: _*)
+
+val df2 = df
+  .withColumn(
+	"new_gender_01",
+	when(col("gender") === "M", "Male")
+	  .when(col("gender") === "F", "Female")
+	  .otherwise("Unknown")
+  )
+  .withColumn(
+	"new_gender_02",
+	when(col("gender") === "M" && col("gender") === "F", "Male/Female")
+	  .otherwise("Unknown")
+  )
+  .withColumn(
+	"new_gender_03",
+	when(col("gender") === "M" || col("gender") === "F", "Male/Female")
+	  .otherwise("Unknown")
+  )
+df2.show(false)
+
+val df3 = df2.filter(df("age") > 40)
+df3.show(false)
+```
+
+
 ### Spark-Scala - remove temp view tables
 ```
 spark.catalog.dropTempView("tab_data_view")
@@ -511,3 +699,20 @@ spark.catalog.dropTempView("tab_data_view")
 ```
 dbutils.fs.rm("/FileStore/tables/sample_data.csv")
 ```
+
+
+### Spark-Scala : Delete records Using List
+```
+import org.apache.spark.sql.SparkSession
+
+//
+val spark = SparkSession.builder()
+						.appName("SparkScalaApp")
+						.master("local[*]")
+						.getOrCreate()
+val tableName = "emp"
+val empIdList = List(101, 102)
+val deleteQry = s"select * from $tableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
+spark.sql(deleteQry)
+```
+
