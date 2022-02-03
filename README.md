@@ -29,10 +29,7 @@ val df = spark.sparkContext.parallelize(mockedData).toDF("accountNbr", "manufact
 ```
 import org.apache.spark.sql.{SparkSession}
 //
-val spark = SparkSession.builder()
-                                             .appName("SparkScalaApp")
-                                             .master("local[*]")
-                                             .getOrCreate()
+val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
 
 val data = List(
       ("f1", "l1", "M", 10000),
@@ -155,6 +152,82 @@ def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
       .execute()
   }
 
+```
+
+### Spark-Scala : DataFrame : Write to Table with Timestamp 
+```
+import io.delta.tables.DeltaTable
+import org.apache.spark.sql.functions.{
+  col,
+  current_timestamp,
+  lit,
+  unix_timestamp
+}
+import org.apache.spark.sql.types.{
+  DataType,
+  LongType,
+  StringType,
+  StructField,
+  StructType,
+  TimestampType
+}
+import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+
+import java.sql.{Date, Timestamp}
+
+
+//
+val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+
+import spark.implicits._
+val insertDataList = Seq(
+	Row(101L, Timestamp.valueOf("1980-01-01 09:01:01"), "M", "a1")
+)
+
+val insertDataSchema = StructType(
+      List(
+        StructField("emp_id", LongType, false),
+        StructField("dob", TimestampType, false),
+        StructField("gender", StringType, false),
+        StructField("name", StringType, false),
+        StructField("is_active", StringType, false),
+      )
+    )
+
+val df = spark.createDataFrame(spark.sparkContext.parallelize(insertDataList),insertDataSchema)
+              .withColumn("CREATED_TIMESTAMP", current_timestamp())
+              .withColumn("UPDATED_TIMESTAMP", current_timestamp())
+              .withColumn("is_active", lit("true"))
+              
+val df1 = df.select(col("emp_id"),
+					col("dob").cast(TimestampType),
+					col("gender"),
+					col("name"),
+					col("CREATED_TIMESTAMP"),
+					col("UPDATED_TIMESTAMP"),
+                                        col("is_active")
+				   )
+
+val df2 = df1.withColumn("dob", unix_timestamp(col("dob"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
+			 .withColumn("CREATED_TIMESTAMP",unix_timestamp(col("CREATED_TIMESTAMP"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
+			.withColumn("UPDATED_TIMESTAMP",unix_timestamp(col("MODIFIED_TIMESTAMP"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
+
+val deltaLakeTableName = "emp"
+val upsertCondition = "target.emp_id = source.emp_id"
+
+val deltaTable = DeltaTable.forName(spark, deltaLakeTableName)
+deltaTable.as("target")
+          .merge(df2.alias("source"), upsertCondition)
+          .whenMatched
+          .updateExpr(Map("dob" -> "source.dob",
+					"gender" -> "source.gender",
+                                        "is_active" -> "source.is_active",
+					"name" -> "source.name",
+					"CREATED_TIMESTAMP" -> "source.CREATED_TIMESTAMP",
+					"UPDATED_TIMESTAMP" -> "source.MODIFIED_TIMESTAMP"))
+		  .whenNotMatched
+		  .insertAll()
+		  .execute()
 ```
 
 ### Spark-Scala : DataFrame : extract single column data to list : Option # 1 
@@ -689,7 +762,6 @@ val df3 = df2.filter(df("age") > 40)
 df3.show(false)
 ```
 
-
 ### Spark-Scala - remove temp view tables
 ```
 spark.catalog.dropTempView("tab_data_view")
@@ -700,19 +772,18 @@ spark.catalog.dropTempView("tab_data_view")
 dbutils.fs.rm("/FileStore/tables/sample_data.csv")
 ```
 
-
 ### Spark-Scala : Delete records Using List
 ```
 import org.apache.spark.sql.SparkSession
 
 //
 val spark = SparkSession.builder()
-			.appName("SparkScalaApp")
-			.master("local[*]")
-			.getOrCreate()
+						.appName("SparkScalaApp")
+						.master("local[*]")
+						.getOrCreate()
 val tableName = "emp"
 val empIdList = List(101, 102)
-val deleteQry = s"delete from $tableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
+val deleteQry = s"select * from $tableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
 spark.sql(deleteQry)
 ```
 
@@ -725,4 +796,80 @@ val empIdList = List(101, 102)
 val selectQry = s"select * from $resultsTableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
 val selectQryDataFrame = spark.sql(selectQry)
 selectQryDataFrame.show(false)
+```
+
+
+### Spark-Scala : Optimize Table
+```
+def optimizeTables(): Unit = {
+    val spark = SparkSession
+      .builder()
+      .appName("SparkScalaApp")
+      .master("local[*]")
+      .getOrCreate()
+    val optimizeTableList =
+      Array("OPTIMIZE emp_id  ZORDER BY empId", "OPTIMIZE dept")
+    optimizeTableList.foreach { item =>
+      spark.sql(item)
+    }
+  }
+```
+
+
+### Spark-Scala : Utility Methods
+```
+def leftPad(string: String, len: Int, padChar: Char): String = {
+    if (string.length >= len) return string
+    val stringBuilder = new StringBuilder(len)
+    for (i <- string.length until len) {
+      stringBuilder.append(padChar)
+    }
+    stringBuilder.append(string)
+    stringBuilder.toString
+  }
+
+  def rightPad(string: String, len: Int, padChar: Char): String = {
+    if (string.length >= len) return string
+    val stringBuilder = new StringBuilder(len)
+    stringBuilder.append(string)
+    for (i <- string.length until len) {
+      stringBuilder.append(padChar)
+    }
+    stringBuilder.toString
+  }
+
+  def getIntList(dbData: String, maxRows: Int): String = {
+    //
+    val fieldDataList: ListBuffer[Int] = ListBuffer.fill(maxRows)(0)
+    val dbDataList = dbData.split(",").toList
+
+    for (i <- 0 until dbDataList.size) {
+      fieldDataList(i) = BigDecimal(dbDataList(i)).toInt
+    }
+    fieldDataList.mkString(",")
+  }
+
+  def getStringList(dbData: String, maxRows: Int): String = {
+    //
+    val fieldDataList: ListBuffer[String] = ListBuffer.fill(maxRows)("")
+    val dbDataList = dbData.split(",").toList
+
+    for (i <- 0 until dbDataList.size) {
+      fieldDataList(i) = "\"" + dbDataList(i) + "\""
+    }
+    fieldDataList.mkString(",")
+  }
+
+  def addDoubleQuote2ListData(fieldDataList: List[String]): String = {
+    var finalData = ""
+    //val fieldDefaultValue = "\"\""
+    var listStringBuffer = new ListBuffer[String]()
+    for (i <- 0 until fieldDataList.size) {
+      listStringBuffer += "\"" + fieldDataList(i) + "\""
+    }
+    finalData = listStringBuffer.mkString(",")
+    "[" + finalData + "]"
+  }
+
+  def isAllDigits(input: String) = input forall Character.isDigit
 ```
