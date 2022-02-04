@@ -9,18 +9,20 @@ Scala => val nullString: String = null
 ```
 
 * Null - TODO
+
 ```
 ```
 
 * Nothing - TODO
+
 ```
 ```
 
 * Nil - Empty List
+
 ```
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 
-```
 val intList01: List[Int] = Nil
 val intList02: List[Int] = 1 :: Nil
 print("intList01 = " + intList01.size + " && intList02 = " + intList02.size)
