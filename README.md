@@ -1,5 +1,44 @@
 # Spark-Scala - Quick Reference Guide
 
+### Scala : Null, null, Nil, Nothing, None, and Unit
+* null - Similar to Java null, void using null while initializing variables, use Nil if you want to set an empty value to the variable
+
+```
+java   => private String nullString = null;
+Scala => val nullString: String = null
+```
+
+* Null - TODO
+```
+```
+
+* Nothing - TODO
+```
+```
+
+* Nil - Empty List
+```
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
+
+```
+val intList01: List[Int] = Nil
+val intList02: List[Int] = 1 :: Nil
+print("intList01 = " + intList01.size + " && intList02 = " + intList02.size)
+
+
+val testDataSchema = StructType(
+      StructField("dept_id", IntegerType, false) ::
+      StructField("dept_name", StringType, false) :: Nil
+    )
+```
+
+* None -  Used to return a valid by avoiding null pointer exception. Option has exactly 2 subclasses i.e. None & Some
+
+```
+val someOptionInt: Option[Int] = Some(111)
+val noneOptionInt: Option[Int] = None
+```
+
 ### Spark-Scala : DataFrame : Option # 1
 
 ```
@@ -67,7 +106,55 @@ val testDataSchema = StructType(
 val df = spark.createDataFrame(spark.sparkContext.parallelize(testDataList),testDataSchema)
 ```
 
+### Spark-Scala : Create DataFrame using Map
 
+```
+import org.apache.spark.sql.{SparkSession}
+val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+
+val map = Map("a1" -> "1", "a2" -> "2", "a3" -> "3")
+import spark.implicits._
+val df = map.toSeq.toDF("col", "data")
+df.show(false)
+```
+
+
+### Spark-Scala : Create DataFrame using List
+
+```
+import org.apache.spark.sql.{SparkSession}
+val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+
+val list = List(101, 102, 103)
+val t: List[(Int, String)] = list map ((_, "0"))
+import spark.implicits._
+val df1 = t.toSeq.toDF("col", "data")
+df1.show(false)    
+```
+
+### Spark-Scala : List 2 Map # 01
+
+```
+val list01 = List(101L, 102L, 103L)
+val list02 = List("a1", "a2", "a3")
+val map01 = (list01 zip list02).toMap
+map01.foreach(println)
+```
+
+### Spark-Scala : List 2 Map # 02
+
+```
+val map02 = list01.zipWithIndex.map { case (v, i) => (v, i) }.toMap
+map02.foreach(println)
+```
+
+### Spark-Scala : List 2 Map # 03
+
+```
+ val list03 = List(101, 102, 103)
+    val t: List[(Int, String)] = list03 map ((_, "0"))
+    t.foreach(println)
+```
 
 ### Spark-Scala : DataFrame : Write to Table # Option # 1
 ```
@@ -126,8 +213,9 @@ insert2Account(spark, dataFrame)
 
 def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
     //
-    val accountDataFrame = df.withColumn("created_date", current_timestamp())
-      			     .withColumn("updated_date", current_timestamp())
+    val accountDataFrame = df
+      .withColumn("created_date", current_timestamp())
+      .withColumn("updated_date", current_timestamp())
 
     //
     val upsertCondition = "target.account_id = source.account_id"
@@ -135,16 +223,22 @@ def insert2Account(spark: SparkSession, df: DataFrame): Unit = {
     //
     val tableName: String = "account"
     val deltaTable = DeltaTable.forName(spark, tableName)
-    deltaTable.as("target")
-      	      .merge(accountDataFrame.alias("source"), upsertCondition)
-              .whenMatched
-              .updateExpr(Map("updated_date" -> "source.exp_ev_tmstmp",
-                              "first_name" -> "source.first_name",
-                              "last_name" -> "source.last_name"))
-              .whenNotMatched
-              .insertAll()
-              .execute()
-}
+    deltaTable
+      .as("target")
+      .merge(accountDataFrame.alias("source"), upsertCondition)
+      .whenMatched
+      .updateExpr(
+        Map(
+          "updated_date" -> "source.exp_ev_tmstmp",
+          "first_name" -> "source.first_name",
+          "last_name" -> "source.last_name"
+        )
+      )
+      .whenNotMatched
+      .insertAll()
+      .execute()
+  }
+
 ```
 
 ### Spark-Scala : DataFrame : Write to Table with Timestamp 
@@ -178,12 +272,13 @@ val insertDataList = Seq(
 )
 
 val insertDataSchema = StructType(
-      List(StructField("emp_id", LongType, false),
-           StructField("dob", TimestampType, false),
-           StructField("gender", StringType, false),
-           StructField("name", StringType, false),
-           StructField("is_active", StringType, false),
-          )
+      List(
+        StructField("emp_id", LongType, false),
+        StructField("dob", TimestampType, false),
+        StructField("gender", StringType, false),
+        StructField("name", StringType, false),
+        StructField("is_active", StringType, false),
+      )
     )
 
 val df = spark.createDataFrame(spark.sparkContext.parallelize(insertDataList),insertDataSchema)
@@ -192,16 +287,17 @@ val df = spark.createDataFrame(spark.sparkContext.parallelize(insertDataList),in
               .withColumn("is_active", lit("true"))
               
 val df1 = df.select(col("emp_id"),
-		   col("dob").cast(TimestampType),
-		   col("gender"),
-		   col("name"),
-		   col("CREATED_TIMESTAMP"),
-		   col("UPDATED_TIMESTAMP"),
-                   col("is_active"))
+					col("dob").cast(TimestampType),
+					col("gender"),
+					col("name"),
+					col("CREATED_TIMESTAMP"),
+					col("UPDATED_TIMESTAMP"),
+                                        col("is_active")
+				   )
 
 val df2 = df1.withColumn("dob", unix_timestamp(col("dob"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
-	     .withColumn("CREATED_TIMESTAMP",unix_timestamp(col("CREATED_TIMESTAMP"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
-	     .withColumn("UPDATED_TIMESTAMP",unix_timestamp(col("MODIFIED_TIMESTAMP"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
+			 .withColumn("CREATED_TIMESTAMP",unix_timestamp(col("CREATED_TIMESTAMP"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
+			.withColumn("UPDATED_TIMESTAMP",unix_timestamp(col("MODIFIED_TIMESTAMP"), "yyyy-MM-dd HH:mm:ss").cast(TimestampType))
 
 val deltaLakeTableName = "emp"
 val upsertCondition = "target.emp_id = source.emp_id"
@@ -211,21 +307,25 @@ deltaTable.as("target")
           .merge(df2.alias("source"), upsertCondition)
           .whenMatched
           .updateExpr(Map("dob" -> "source.dob",
-		          "gender" -> "source.gender",
-                          "is_active" -> "source.is_active",
-			  "name" -> "source.name",
-			  "CREATED_TIMESTAMP" -> "source.CREATED_TIMESTAMP",
-			  "UPDATED_TIMESTAMP" -> "source.MODIFIED_TIMESTAMP"))
-	  .whenNotMatched
-	  .insertAll()
-	  .execute()
+					"gender" -> "source.gender",
+                                        "is_active" -> "source.is_active",
+					"name" -> "source.name",
+					"CREATED_TIMESTAMP" -> "source.CREATED_TIMESTAMP",
+					"UPDATED_TIMESTAMP" -> "source.MODIFIED_TIMESTAMP"))
+		  .whenNotMatched
+		  .insertAll()
+		  .execute()
 ```
 
 ### Spark-Scala : DataFrame : extract single column data to list : Option # 1 
 
 ```
  //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
 
 // todo - build dataframe from above examples
 val dataFrame = spark.emptyDataFrame
@@ -237,7 +337,11 @@ val empIdList = dataFrame.select("emp_id").distinct.collect.flatMap(_.toSeq)
 
 ```
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
 
 // todo - build dataframe from above examples
 val dataFrame = spark.emptyDataFrame
@@ -353,7 +457,10 @@ object DBUtil {
 import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession.builder()
+                        .appName("SparkScalaApp")
+                        .master("local[*]")
+                        .getOrCreate()
 
 val data = List(
       (101, "2022-01-16", "a1"),
@@ -529,7 +636,10 @@ import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession.builder()
+                        .appName("SparkScalaApp")
+                        .master("local[*]")
+                        .getOrCreate()
 
 import spark.implicits._
 val timestamp2StringDataFrame = Seq(
@@ -555,7 +665,10 @@ import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession.builder()
+                        .appName("SparkScalaApp")
+                        .master("local[*]")
+                        .getOrCreate()
                         
 val string2TimestampDataFrame = Seq(
       ("2022-01-29 06:00:01")
@@ -576,7 +689,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.lit
 
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
 
 val data = List(
   ("f1", "l1", "M", 10000),
@@ -609,8 +726,13 @@ Example
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, current_timestamp, lit, when}
 
+
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
 
 val data = List(
   ("f1", "l1", "M", 10000, "galaxy4", 25),
@@ -653,7 +775,11 @@ import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.functions.row_number
 
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
 
 import spark.implicits._
 val df = Seq(
@@ -682,7 +808,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{col, when}
 
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
+val spark = SparkSession
+  .builder()
+  .appName("SparkScalaApp")
+  .master("local[*]")
+  .getOrCreate()
 
 import spark.sqlContext.implicits._
 val data = List(
@@ -734,8 +864,10 @@ dbutils.fs.rm("/FileStore/tables/sample_data.csv")
 import org.apache.spark.sql.SparkSession
 
 //
-val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
-
+val spark = SparkSession.builder()
+						.appName("SparkScalaApp")
+						.master("local[*]")
+						.getOrCreate()
 val tableName = "emp"
 val empIdList = List(101, 102)
 val deleteQry = s"select * from $tableName where emp_id in (${empIdList.map(x => "'" + x + "'").mkString(",")})"
@@ -753,17 +885,23 @@ val selectQryDataFrame = spark.sql(selectQry)
 selectQryDataFrame.show(false)
 ```
 
+
 ### Spark-Scala : Optimize Table
 ```
 def optimizeTables(): Unit = {
-    val spark = SparkSession.builder().appName("SparkScalaApp").master("local[*]").getOrCreate()
-    
-    val optimizeTableList = Array("OPTIMIZE emp_id  ZORDER BY empId", "OPTIMIZE dept")
+    val spark = SparkSession
+      .builder()
+      .appName("SparkScalaApp")
+      .master("local[*]")
+      .getOrCreate()
+    val optimizeTableList =
+      Array("OPTIMIZE emp_id  ZORDER BY empId", "OPTIMIZE dept")
     optimizeTableList.foreach { item =>
       spark.sql(item)
     }
-}
+  }
 ```
+
 
 ### Spark-Scala : Utility Methods
 ```
@@ -775,9 +913,9 @@ def leftPad(string: String, len: Int, padChar: Char): String = {
     }
     stringBuilder.append(string)
     stringBuilder.toString
-}
+  }
 
-def rightPad(string: String, len: Int, padChar: Char): String = {
+  def rightPad(string: String, len: Int, padChar: Char): String = {
     if (string.length >= len) return string
     val stringBuilder = new StringBuilder(len)
     stringBuilder.append(string)
@@ -785,9 +923,9 @@ def rightPad(string: String, len: Int, padChar: Char): String = {
       stringBuilder.append(padChar)
     }
     stringBuilder.toString
-}
+  }
 
-def getIntList(dbData: String, maxRows: Int): String = {
+  def getIntList(dbData: String, maxRows: Int): String = {
     //
     val fieldDataList: ListBuffer[Int] = ListBuffer.fill(maxRows)(0)
     val dbDataList = dbData.split(",").toList
@@ -796,9 +934,9 @@ def getIntList(dbData: String, maxRows: Int): String = {
       fieldDataList(i) = BigDecimal(dbDataList(i)).toInt
     }
     fieldDataList.mkString(",")
-}
+  }
 
-def getStringList(dbData: String, maxRows: Int): String = {
+  def getStringList(dbData: String, maxRows: Int): String = {
     //
     val fieldDataList: ListBuffer[String] = ListBuffer.fill(maxRows)("")
     val dbDataList = dbData.split(",").toList
@@ -807,9 +945,9 @@ def getStringList(dbData: String, maxRows: Int): String = {
       fieldDataList(i) = "\"" + dbDataList(i) + "\""
     }
     fieldDataList.mkString(",")
-}
+  }
 
-def addDoubleQuote2ListData(fieldDataList: List[String]): String = {
+  def addDoubleQuote2ListData(fieldDataList: List[String]): String = {
     var finalData = ""
     //val fieldDefaultValue = "\"\""
     var listStringBuffer = new ListBuffer[String]()
@@ -818,7 +956,7 @@ def addDoubleQuote2ListData(fieldDataList: List[String]): String = {
     }
     finalData = listStringBuffer.mkString(",")
     "[" + finalData + "]"
-}
+  }
 
-def isAllDigits(input: String) = input forall Character.isDigit
+  def isAllDigits(input: String) = input forall Character.isDigit
 ```
